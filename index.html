@@ -1,64 +1,46 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FIRST DOCKER</title>
+    <!-- Link external CSS -->
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <center>
-      <h1>UP AND RUNNING ON DOCKER IMAGE </h1>
+      <h1>UP AND RUNNING ON DOCKER IMAGE</h1>
     </center>
+
     <p id="date"></p>
+
     <footer>
       <center>
-      <a href='https://github.com/Arbinsapkota/Arbinsapkota.git/'>
-        by @Arbin sapkota
-      </a>
-        </center>
+        <a href="https://github.com/Arbinsapkota/Arbinsapkota">
+          by @Arbin sapkota
+        </a>
+      </center>
     </footer>
-  </body>
-  <style>
-    body {
-      text-align: center;
-      background-color: #f2f2f2;
-    }
 
-    h1 {
-      color: #333333;
-    }
+    <script>
+      function getCurrentDateTime() {
+        var currentDateTime = new Date();
+        var formattedDateTime =
+          "Your local datetime is: " +
+          currentDateTime.toDateString() +
+          ", " +
+          currentDateTime.toLocaleTimeString();
+        return formattedDateTime;
+      }
 
-    p {
-      font-size: 20px;
-      color: #dd0808;
-      font-weight: 600;
-    }
-    a{
-      text-decoration: none;
-      color: 'green';
-    }
-    footer{
-      background-color: 'black';
-      height: 75px;
-      width: 100%;
-      position: fixed;
-      bottom: 0px;
-    }
-  </style>
-  <script>
-    function getCurrentDateTime() {
-      var currentDateTime = new Date();
-      var formattedDateTime =
-        "Your local datetime is: " + 
-        currentDateTime.toDateString() +
-        ", " +
-        currentDateTime.toLocaleTimeString();
-      return formattedDateTime;
-    }
-    document.getElementById("date").innerHTML = getCurrentDateTime();
-
-    setInterval(function () {
+      // Initial render
       document.getElementById("date").innerHTML = getCurrentDateTime();
-    }, 1000);
-  </script>
+
+      // Update every second
+      setInterval(function () {
+        document.getElementById("date").innerHTML = getCurrentDateTime();
+      }, 1000);
+    </script>
+  </body>
 </html>
