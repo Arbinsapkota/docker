@@ -1,13 +1,11 @@
-
-
 pipeline {
   agent any
   options { timestamps() }
 
   stages {
+
     stage('Checkout') {
       steps {
-        // Uses the same repo that provided this Jenkinsfile
         checkout scm
       }
     }
@@ -17,29 +15,40 @@ pipeline {
         bat '''
           if not exist index.html (echo index.html NOT FOUND! & exit /b 1)
           if not exist style.css  (echo style.css NOT FOUND!  & exit /b 1)
-          echo Files present: index.html and style.css
+          echo OK: Found index.html and style.css
         '''
       }
     }
 
     stage('Serve Website on Port 3000') {
       steps {
-        // 1) Free port 3000 if already used
+
+        // Free port 3000 if something is already using it
         bat '''
           powershell -NoProfile -Command ^
             "$c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; ^
              if ($c) { try { Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue } catch {} }"
         '''
 
-        // 2) Start Python HTTP server in the background from the workspace
-        // Prefer the Python launcher (py -3). If you don't have it, replace with "python".
+        // Detect whether 'py' or 'python' is available
         bat '''
-          for %%A in ("%WORKSPACE%") do set WDIR=%%~fA
-          echo Starting local server from %WDIR% ...
-          start "" /B cmd /c "cd /d %WDIR% && py -3 -m http.server 3000 > %TEMP%\\site-3000.log 2>&1"
+          set "PYCMD="
+          where py >nul 2>nul && set "PYCMD=py -3"
+          if not defined PYCMD where python >nul 2>nul && set "PYCMD=python"
+          if not defined PYCMD (
+            echo ERROR: Python not found in PATH!
+            exit /b 1
+          )
+
+          for %%A in ("%WORKSPACE%") do set "WDIR=%%~fA"
+          echo Using Python command: %PYCMD%
+          echo Starting server from %WDIR% ...
+
+          start "" /B cmd /c "cd /d %WDIR% && %PYCMD% -m http.server 3000 > %TEMP%\\site-3000.log 2>&1"
+
           echo ==================================================
-          echo  SITE SHOULD BE LIVE AT: http://localhost:3000/
-          echo  (log: %TEMP%\\site-3000.log)
+          echo  WEBSITE LIVE: http://localhost:3000/
+          echo  LOG FILE: %TEMP%\\site-3000.log
           echo ==================================================
         '''
       }
@@ -48,14 +57,13 @@ pipeline {
 
   post {
     success {
-      echo 'Done. Open http://localhost:3000/'
+      echo 'Success! Open http://localhost:3000/'
     }
     failure {
-      echo 'Build failed. See Console Output for details.'
+      echo 'Build failed. Check Console Output for errors.'
     }
   }
 }
-
 
 
 
