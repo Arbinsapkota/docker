@@ -1,31 +1,77 @@
 
 pipeline {
-    agent any
+  agent any
 
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
+  options { timestamps(); ansiColor('xterm') }
 
-        stage('Deploy HTML Files') {
-            steps {
-                // Replace with your server path
-                sh '''
-                    sudo rm -rf /var/www/html/*
-                    sudo cp -r * /var/www/html/
-                '''
-            }
-        }
+  environment {
+    // Where Apache serves files (XAMPP on Windows)
+    DEPLOY_DIR = 'C:\\xampp\\htdocs'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
     }
 
-    post {
-        success {
-            echo "Website updated successfully!"
-        }
+    stage('Clean target folder') {
+      steps {
+        // Windows-safe cleanup: delete contents but not the folder itself
+        bat '''
+          if exist "%DEPLOY_DIR%" (
+            del /Q "%DEPLOY_DIR%\\*.*" 2>nul
+            for /d %%d in ("%DEPLOY_DIR%\\*") do @rd /s /q "%%d"
+          ) else (
+            mkdir "%DEPLOY_DIR%"
+          )
+        '''
+      }
     }
+
+    stage('Deploy HTML/CSS/JS') {
+      steps {
+        // Copy everything except .git and Jenkinsfile itself
+        bat '''
+          xcopy * "%DEPLOY_DIR%" /E /H /C /Y /I
+          if exist ".git" rd /s /q ".git"
+        '''
+      }
+    }
+  }
+
+  post {
+    success { echo '✅ Deployed to XAMPP. Open http://localhost to see the update.' }
+    failure { echo '❌ Deployment failed. Check Console Output.' }
+  }
 }
+
+// pipeline {
+//     agent any
+
+//     stages {
+//         stage('Checkout') {
+//             steps {
+//                 checkout scm
+//             }
+//         }
+
+//         stage('Deploy HTML Files') {
+//             steps {
+//                 // Replace with your server path
+//                 sh '''
+//                     sudo rm -rf /var/www/html/*
+//                     sudo cp -r * /var/www/html/
+//                 '''
+//             }
+//         }
+//     }
+
+//     post {
+//         success {
+//             echo "Website updated successfully!"
+//         }
+//     }
+// }
 
 
 // Example Jenkinsfile for Linux/MacOS systems using shell commands
