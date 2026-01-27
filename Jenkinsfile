@@ -16,23 +16,26 @@ pipeline {
 
         stage('Build Image') {
             steps {
-                bat 'docker build -t %IMAGE_NAME% .'
+                bat "docker build -t %IMAGE_NAME% ."
             }
         }
 
         stage('Deploy Container') {
             steps {
-                bat '''
-                docker rm -f %CONTAINER_NAME% || exit 0
+                bat """
+                docker rm -f %CONTAINER_NAME% || echo Container not found
                 docker run -d -p %PORT%:80 --name %CONTAINER_NAME% %IMAGE_NAME%
-                '''
+                """
             }
         }
     }
 
     post {
         success {
-            echo "✅ Static site deployed successfully"
+            echo "✅ Static site deployed successfully!"
+        }
+        failure {
+            echo "❌ Deployment failed. Check logs."
         }
     }
 }
