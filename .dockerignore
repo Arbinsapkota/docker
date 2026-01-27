@@ -1,0 +1,19 @@
+# VCS
+.git
+.gitignore
+
+# CI/CD
+Jenkinsfile
+.github
+.gitlab-ci.yml
+
+# Logs and OS cruft
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Node or build outputs (if any)
+node_modules
+dist
+build
