@@ -28,7 +28,6 @@ pipeline {
             steps {
                 script {
                     echo "🚧 Building Docker image..."
-                    // Force rebuild without cache to ensure latest changes are included
                     bat "docker build --no-cache -t ${CONTAINER_NAME}:${COMMIT_HASH} ."
                     bat "docker tag ${CONTAINER_NAME}:${COMMIT_HASH} ${CONTAINER_NAME}:latest"
                 }
@@ -39,12 +38,9 @@ pipeline {
             steps {
                 script {
                     echo "🚀 Deploying container..."
-                    // Stop & remove old container if exists
                     bat """
-                    docker stop ${CONTAINER_NAME} || echo Container not running
-                    docker rm ${CONTAINER_NAME} || echo Container not found
+                    docker rm -f ${CONTAINER_NAME} || echo Container not found
                     """
-                    // Run new container
                     bat "docker run -d -p ${PORT}:80 --name ${CONTAINER_NAME} ${CONTAINER_NAME}:${COMMIT_HASH}"
                 }
             }
@@ -53,6 +49,7 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 script {
+                    sleep(5) // Wait a few seconds for container to initialize
                     IMAGE_ID = bat(script: "docker inspect ${CONTAINER_NAME} --format='{{.Image}}'", returnStdout: true).trim()
                     DEPLOYED_HASH = bat(script: "docker images --format=\"{{.ID}} {{.Repository}}:{{.Tag}}\" | findstr ${IMAGE_ID}", returnStdout: true).trim()
                     echo "✅ Container ${CONTAINER_NAME} deployed with image: ${DEPLOYED_HASH}"
