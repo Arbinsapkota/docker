@@ -8,6 +8,11 @@ pipeline {
         PORT = "4000"
     }
 
+    triggers {
+        // Automatically run pipeline on every commit push
+        pollSCM('* * * * *')  // checks every minute, can be replaced with webhook
+    }
+
     stages {
         stage('Checkout') {
             steps {
