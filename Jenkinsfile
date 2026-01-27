@@ -22,7 +22,7 @@ pipeline {
 
         stage('Checkout (Fresh)') {
             steps {
-                deleteDir()   // ← FIXED: replaces cleanWs()
+                deleteDir()
                 git branch: "${BRANCH}", url: "${REPO_URL}", changelog: true, poll: true
                 bat 'git --version'
                 bat 'git log -1 --oneline'
@@ -32,7 +32,10 @@ pipeline {
         stage('Get Commit Hash') {
             steps {
                 script {
-                    env.COMMIT_HASH = bat(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.COMMIT_HASH = bat(
+                        script: 'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
                     echo "Latest commit: ${env.COMMIT_HASH}"
                 }
             }
@@ -42,8 +45,9 @@ pipeline {
             steps {
                 script {
                     bat "docker builder prune -f"
-                    bat "docker build --pull --no-cache -t ${CONTAINER_NAME}:${env.COMMIT_HASH} ."
-                    bat "docker tag ${CONTAINER_NAME}:${env.COMMIT_HASH} ${CONTAINER_NAME}:latest"
+                    // ⭐ Correct Windows syntax
+                    bat "docker build --pull --no-cache -t %CONTAINER_NAME%:%COMMIT_HASH% ."
+                    bat "docker tag %CONTAINER_NAME%:%COMMIT_HASH% %CONTAINER_NAME%:latest"
                 }
             }
         }
@@ -51,9 +55,9 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 script {
-                    bat "docker rm -f ${CONTAINER_NAME} || echo no existing container"
-                    bat "docker run -d -p ${PORT}:80 --name ${CONTAINER_NAME} ${CONTAINER_NAME}:${env.COMMIT_HASH}"
-                    bat "docker ps --filter name=${CONTAINER_NAME}"
+                    bat "docker rm -f %CONTAINER_NAME% || echo no existing container"
+                    bat "docker run -d -p %PORT%:80 --name %CONTAINER_NAME% %CONTAINER_NAME%:%COMMIT_HASH%"
+                    bat "docker ps --filter name=%CONTAINER_NAME%"
                 }
             }
         }
@@ -62,7 +66,7 @@ pipeline {
             steps {
                 script {
                     sleep 5
-                    bat "curl -s -o NUL -w \"HTTP %{http_code}\\n\" http://localhost:${PORT}"
+                    bat "curl -s -o NUL -w \"HTTP %{http_code}\\n\" http://localhost:%PORT%"
                 }
             }
         }
