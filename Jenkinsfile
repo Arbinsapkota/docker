@@ -9,13 +9,13 @@ pipeline {
     }
 
     triggers {
-        // Automatically run pipeline on every commit push
-        pollSCM('* * * * *')  // checks every minute, can be replaced with webhook
+        pollSCM('* * * * *')
     }
 
     stages {
         stage('Checkout') {
             steps {
+                cleanWs()   // prevent using old workspace
                 git branch: "${BRANCH}", url: "${REPO_URL}"
             }
         }
@@ -24,7 +24,7 @@ pipeline {
             steps {
                 script {
                     COMMIT_HASH = bat(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    echo "✅ Latest commit hash: ${COMMIT_HASH}"
+                    echo "Latest commit: ${COMMIT_HASH}"
                 }
             }
         }
@@ -32,7 +32,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo "🚧 Building Docker image..."
+                    bat "docker builder prune -f"   // clear cache
                     bat "docker build --no-cache -t ${CONTAINER_NAME}:${COMMIT_HASH} ."
                     bat "docker tag ${CONTAINER_NAME}:${COMMIT_HASH} ${CONTAINER_NAME}:latest"
                 }
@@ -42,22 +42,8 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 script {
-                    echo "🚀 Deploying container..."
-                    bat """
-                    docker rm -f ${CONTAINER_NAME} || echo Container not found
-                    """
+                    bat "docker rm -f ${CONTAINER_NAME} || echo no container"
                     bat "docker run -d -p ${PORT}:80 --name ${CONTAINER_NAME} ${CONTAINER_NAME}:${COMMIT_HASH}"
-                }
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                script {
-                    sleep(5) // Wait a few seconds for container to initialize
-                    IMAGE_ID = bat(script: "docker inspect ${CONTAINER_NAME} --format='{{.Image}}'", returnStdout: true).trim()
-                    DEPLOYED_HASH = bat(script: "docker images --format=\"{{.ID}} {{.Repository}}:{{.Tag}}\" | findstr ${IMAGE_ID}", returnStdout: true).trim()
-                    echo "✅ Container ${CONTAINER_NAME} deployed with image: ${DEPLOYED_HASH}"
                 }
             }
         }
@@ -65,10 +51,7 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Static site deployed successfully! Check at http://localhost:${PORT}"
-        }
-        failure {
-            echo "❌ Deployment failed. Check the logs for errors."
+            echo "Deployment complete!"
         }
     }
 }
