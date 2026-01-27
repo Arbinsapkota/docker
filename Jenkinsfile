@@ -22,7 +22,7 @@ pipeline {
 
         stage('Checkout (Fresh)') {
             steps {
-                cleanWs()
+                deleteDir()   // ← FIXED: replaces cleanWs()
                 git branch: "${BRANCH}", url: "${REPO_URL}", changelog: true, poll: true
                 bat 'git --version'
                 bat 'git log -1 --oneline'
@@ -63,9 +63,6 @@ pipeline {
                 script {
                     sleep 5
                     bat "curl -s -o NUL -w \"HTTP %{http_code}\\n\" http://localhost:${PORT}"
-
-                    def imageId = bat(script: "docker inspect ${CONTAINER_NAME} --format='{{.Image}}'", returnStdout: true).trim()
-                    echo "Container running image: ${imageId}"
                 }
             }
         }
