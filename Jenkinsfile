@@ -8,22 +8,21 @@ pipeline {
     }
 
     environment {
-        REPO_URL = "https://github.com/Arbinsapkota/docker.git"
-        BRANCH = "main"
-        CONTAINER_NAME = "site2"
-        PORT = "4000"
+        CONTAINER_NAME = 'site2'
+        PORT           = '4000'
     }
 
+    // Poll GitHub every minute (use this if webhook isn't set or not reachable)
     triggers {
-        pollSCM('* * * * *')
+        pollSCM('* * * * *')   // change to 'H/2 * * * *' for every ~2 mins
+        // If you set up webhook successfully, you can remove pollSCM.
     }
 
     stages {
-
-        stage('Checkout (Fresh)') {
+        stage('Checkout') {
             steps {
-                deleteDir()   // ← FIXED: replaces cleanWs()
-                git branch: "${BRANCH}", url: "${REPO_URL}", changelog: true, poll: true
+                // Jenkins will already checkout for "Pipeline from SCM",
+                // but these help confirm context and show the commit:
                 bat 'git --version'
                 bat 'git log -1 --oneline'
             }
@@ -32,8 +31,12 @@ pipeline {
         stage('Get Commit Hash') {
             steps {
                 script {
-                    env.COMMIT_HASH = bat(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    echo "Latest commit: ${env.COMMIT_HASH}"
+                    env.COMMIT_HASH = bat(
+                        label: 'Get short commit hash',
+                        script: '@echo off\r\nfor /f %%a in (\'git rev-parse --short HEAD\') do @echo %%a',
+                        returnStdout: true
+                    ).trim()
+                    echo "Commit: ${env.COMMIT_HASH}"
                 }
             }
         }
@@ -41,9 +44,14 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    bat "docker builder prune -f"
-                    bat "docker build --pull --no-cache -t ${CONTAINER_NAME}:${env.COMMIT_HASH} ."
-                    bat "docker tag ${CONTAINER_NAME}:${env.COMMIT_HASH} ${CONTAINER_NAME}:latest"
+                    // Optional cleanup to avoid caching surprises
+                    bat 'docker builder prune -f'
+
+                    // Build and tag with commit + latest
+                    bat 'docker build --pull --no-cache --label commit_hash=%COMMIT_HASH% -t %CONTAINER_NAME%:%COMMIT_HASH% .'
+                    bat 'docker tag %CONTAINER_NAME%:%COMMIT_HASH% %CONTAINER_NAME%:latest'
+
+                    bat 'docker images %CONTAINER_NAME%'
                 }
             }
         }
@@ -51,9 +59,13 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 script {
-                    bat "docker rm -f ${CONTAINER_NAME} || echo no existing container"
-                    bat "docker run -d -p ${PORT}:80 --name ${CONTAINER_NAME} ${CONTAINER_NAME}:${env.COMMIT_HASH}"
-                    bat "docker ps --filter name=${CONTAINER_NAME}"
+                    // Stop/remove previous container if exists
+                    bat 'docker rm -f %CONTAINER_NAME% || echo no existing container'
+
+                    // Run the new container on port 4000 -> 80
+                    bat 'docker run -d -p %PORT%:80 --name %CONTAINER_NAME% %CONTAINER_NAME%:%COMMIT_HASH%'
+
+                    bat 'docker ps --filter name=%CONTAINER_NAME%'
                 }
             }
         }
@@ -61,8 +73,18 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 script {
+                    // Give Nginx a moment to start
                     sleep 5
-                    bat "curl -s -o NUL -w \"HTTP %{http_code}\\n\" http://localhost:${PORT}"
+
+                    // Check that HTTP returns 200
+                    bat 'curl -s -o NUL -w "HTTP %{http_code}\\n" http://localhost:%PORT%'
+
+                    // Optional: show which image ID is running
+                    def imageId = bat(
+                        script: 'docker inspect %CONTAINER_NAME% --format="{{.Image}}"',
+                        returnStdout: true
+                    ).trim()
+                    echo "Running image ID: ${imageId}"
                 }
             }
         }
@@ -70,10 +92,17 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Deployment complete! Visit: http://localhost:${PORT}"
+            echo "🎉 Deployed → http://localhost:${PORT}"
         }
         failure {
-            echo "❌ Deployment failed."
+            echo "❌ Deployment failed. Attempting to print container logs…"
+            script {
+                bat 'docker logs --tail 200 %CONTAINER_NAME% || echo no container logs'
+            }
+        }
+        always {
+            // Optional: show top images to help debugging
+            bat 'docker images --format "{{.Repository}}:{{.Tag}}  {{.ID}}  {{.CreatedSince}}" | head -n 15'
         }
     }
 }
