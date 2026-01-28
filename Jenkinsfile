@@ -1,6 +1,5 @@
 
 pipeline {
-<<<<<<< HEAD
     agent any
 
     options {
@@ -108,7 +107,6 @@ pipeline {
         }
     }
 }
-=======
   agent any
   stages {
     stage('Hello') {
@@ -231,4 +229,3 @@ pipeline {
 //         }
 //     }
 // }
->>>>>>> cd4ab6e98deff39d58a55829c015706b07e3b44c
