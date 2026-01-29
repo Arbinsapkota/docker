@@ -52,18 +52,18 @@ pipeline {
     }
 
     stage('Get Commit Hash') {
-      steps {
-        script {
-          // 🔑 Short commit hash used to tag the image uniquely
-          env.COMMIT_HASH = bat(
-            label: 'Get short commit hash',
-            script: '@echo off\r\nfor /f %a in (\'git rev-parse --short HEAD\') do @echo %a',
-            returnStdout: true
-          ).trim()
-          echo "Commit: ${env.COMMIT_HASH}"
-        }
-      }
+  steps {
+    script {
+      env.COMMIT_HASH = bat(
+        label: 'Get short commit hash',
+        script: '@echo off\r\nfor /f %%a in (\'git rev-parse --short HEAD\') do @echo %%a',
+        returnStdout: true
+      ).trim()
+      echo "Commit: ${env.COMMIT_HASH}"
     }
+  }
+}
+
 
     stage('Build Image') {
       steps {
