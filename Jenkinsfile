@@ -23,7 +23,7 @@ pipeline {
 
   environment {
     // 🔁 CHANGE THIS to rename the running Docker container
-    CONTAINER_NAME = 'staticsitehtml'
+    CONTAINER_NAME = 'staticsite1'
 
     // 🔁 CHANGE THIS to expose a different host port (container still listens on 80)
     // e.g., '8080' -> curl http://localhost:8080
