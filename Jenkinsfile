@@ -23,11 +23,11 @@ pipeline {
 
   environment {
     // 🔁 CHANGE THIS to rename the running Docker container
-    CONTAINER_NAME = 'site2'
+    CONTAINER_NAME = 'staticsitehtml'
 
     // 🔁 CHANGE THIS to expose a different host port (container still listens on 80)
     // e.g., '8080' -> curl http://localhost:8080
-    PORT = '4000'
+    PORT = '4040'
 
     // 🏷️ Image base name (local). Usually same as container name; adjust if desired.
     // If you change this, Jenkins will build/tag IMAGE_BASENAME:<commit/ latest>
