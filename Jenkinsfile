@@ -18,13 +18,13 @@ pipeline {
 
   environment {
     // 🔁 Docker container name
-    CONTAINER_NAME = 'staticsite1'
+    CONTAINER_NAME = 'staticsite2'
 
     // 🔁 Host port (browse http://localhost:4040)
-    PORT = '4040'
+    PORT = '4050'
 
     // 🏷️ Docker image name
-    IMAGE_BASENAME = 'staticsite1'
+    IMAGE_BASENAME = 'staticsite2'
 
     // 🌐 Health-check URL
     VERIFY_URL = "http://localhost:4040"
