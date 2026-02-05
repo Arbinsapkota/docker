@@ -2,94 +2,97 @@ pipeline {
   agent any
 
   /**********************************************************************
-   * CONFIG QUICK GUIDE (edit here as needed)
+   * CONFIG QUICK GUIDE
    * --------------------------------------------------------------------
-   * 1) CONTAINER_NAME  -> The container name Docker will run (e.g., "site2")
-   * 2) PORT            -> Host port that maps to container port 80
-   *                       Example: 4000 means you browse http://localhost:4000
-   * 3) VERIFY_URL      -> The URL curl will check in the Verify stage
-   *                       If you change PORT, update VERIFY_URL too.
-   * 4) IMAGE_BASENAME  -> The base image name you want to build/tag locally
-   *                       (kept same as CONTAINER_NAME by default)
-   *
-   * To change container name: set CONTAINER_NAME = 'myapp'
-   * To change host port:      set PORT = '8080' and update VERIFY_URL accordingly
+   * CONTAINER_NAME  -> Name of the running container
+   * PORT            -> Host port mapped to container port 80 (nginx)
+   * IMAGE_BASENAME  -> Docker image base name
+   * VERIFY_URL      -> URL used in Verify stage (curl check)
    **********************************************************************/
+
   options {
-    disableConcurrentBuilds()
-    timestamps()
+    disableConcurrentBuilds()   // Prevent parallel deployments
+    timestamps()                // Add timestamps to logs
     timeout(time: 20, unit: 'MINUTES')
   }
 
   environment {
-    // 🔁 CHANGE THIS to rename the running Docker container
+    // 🔁 Docker container name
     CONTAINER_NAME = 'staticsite1'
 
-    // 🔁 CHANGE THIS to expose a different host port (container still listens on 80)
-    // e.g., '8080' -> curl http://localhost:8080
+    // 🔁 Host port (browse http://localhost:4040)
     PORT = '4040'
 
-    // 🏷️ Image base name (local). Usually same as container name; adjust if desired.
-    // If you change this, Jenkins will build/tag IMAGE_BASENAME:<commit/ latest>
-    IMAGE_BASENAME = "${CONTAINER_NAME}"
+    // 🏷️ Docker image name
+    IMAGE_BASENAME = 'staticsite1'
 
-    // 🌐 Verify URL (used by curl). If you change PORT or host, update this.
-    VERIFY_URL = "http://localhost:${PORT}"
+    // 🌐 Health-check URL
+    VERIFY_URL = "http://localhost:4040"
   }
 
-  // ⏱️ Poll every minute (replace with webhook when ready)
-  triggers { pollSCM('* * * * *') }
+  // ⏱️ SCM polling (can be replaced with GitHub webhook later)
+  triggers {
+    pollSCM('* * * * *')
+  }
 
   stages {
 
     stage('Checkout & Info') {
       steps {
-        // 🧰 Tool versions for quick diagnostics
+        // 🧰 Print tool versions for debugging
         bat 'git --version & docker --version'
-        // 📜 Show last commit that this build uses
+
+        // 📜 Show last commit details
         bat 'git log -1 --oneline'
       }
     }
 
     stage('Get Commit Hash') {
-  steps {
-    script {
-      env.COMMIT_HASH = bat(
-        label: 'Get short commit hash',
-        script: '@echo off\r\nfor /f %%a in (\'git rev-parse --short HEAD\') do @echo %%a',
-        returnStdout: true
-      ).trim()
-      echo "Commit: ${env.COMMIT_HASH}"
-    }
-  }
-}
-
-
-    stage('Build Image') {
       steps {
-        // 🏗️ Build local image: IMAGE_BASENAME:COMMIT and tag 'latest'
-        // If you changed IMAGE_BASENAME above, it applies here automatically.
+        script {
+          // 🏷️ Get short Git commit hash
+          env.COMMIT_HASH = bat(
+            label: 'Get short commit hash',
+            script: '@echo off\r\nfor /f %%a in (\'git rev-parse --short HEAD\') do @echo %%a',
+            returnStdout: true
+          ).trim()
+
+          echo "Commit Hash: ${env.COMMIT_HASH}"
+        }
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        // 🏗️ Build Docker image using commit hash tag
         bat 'docker build -t %IMAGE_BASENAME%:%COMMIT_HASH% .'
+
+        // 🏷️ Tag same image as latest (optional but useful)
         bat 'docker tag %IMAGE_BASENAME%:%COMMIT_HASH% %IMAGE_BASENAME%:latest'
       }
     }
 
-    stage('Deploy') {
+    stage('Deploy (Docker Compose)') {
       steps {
-        // 🧹 Stop & remove old container if it exists (ignore errors)
-        bat 'docker rm -f %CONTAINER_NAME% 2>NUL || echo no existing container'
+        /**
+         * Now:
+         *   - Docker Compose manages container lifecycle
+         *   - Cleaner, scalable, production-style deployment
+         */
 
-        // ▶️ Run new container
-        // If you changed PORT or CONTAINER_NAME above, no need to edit here.
-        // Host:%PORT% -> Container:80 (Nginx listens on 80 in the image)
-        bat 'docker run -d -p %PORT%:80 --name %CONTAINER_NAME% %IMAGE_BASENAME%:%COMMIT_HASH%'
+        bat '''
+        echo Stopping old containers (if any)...
+        docker compose down || echo no existing containers
+
+        echo Starting container using Docker Compose...
+        docker compose up -d
+        '''
       }
     }
 
     stage('Verify') {
       steps {
-        // 🔍 Health check via HTTP status code on VERIFY_URL
-        // If you changed PORT or domain, update VERIFY_URL in environment.
+        // 🔍 Verify deployment using HTTP status check
         bat 'curl --fail --silent --show-error --location -o NUL -w "HTTP %%{http_code}\\n" %VERIFY_URL%'
       }
     }
@@ -97,11 +100,13 @@ pipeline {
 
   post {
     success {
-      echo "✅ Deployed: ${env.VERIFY_URL}"
+      // ✅ Successful deployment message
+      echo "✅ Application deployed successfully at ${env.VERIFY_URL}"
     }
+
     failure {
-      echo "❌ Deployment failed. Container logs (if present):"
-      // Safe to run even if container wasn't created
+      // ❌ Print logs if deployment fails
+      echo "❌ Deployment failed. Showing container logs:"
       bat 'docker logs --tail 200 %CONTAINER_NAME% || echo no container logs'
     }
   }

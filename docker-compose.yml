@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+  staticsite:
+    image: staticsite1:${COMMIT_HASH}
+    container_name: staticsite1
+    ports:
+      - "4040:80"
+    restart: always
