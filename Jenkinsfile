@@ -27,7 +27,7 @@ pipeline {
     IMAGE_BASENAME = 'staticsite3'
 
     // 🌐 Health-check URL
-    VERIFY_URL = "http://localhost:4040"
+    VERIFY_URL = "http://localhost:${PORT}"
   }
 
   // ⏱️ SCM polling (can be replaced with GitHub webhook later)
